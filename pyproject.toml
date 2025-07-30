@@ -6,6 +6,7 @@ authors = [
     {name = "Cha Hwa Young",email = "chahwayoung214@gmail.com"}
 ]
 readme = "README.md"
+package-mode = false
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastapi (>=0.116.1,<0.117.0)",
