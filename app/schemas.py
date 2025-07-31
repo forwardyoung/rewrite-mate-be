@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import List
 
 
 class ContextType(str, Enum):
@@ -12,15 +11,13 @@ class ContextType(str, Enum):
 class RewriteRequest(BaseModel):
     text: str
     context: ContextType
-
-
-class RewriteVersion(BaseModel):
-    name: str
-    icon: str
-    text: str
-    explanation: str
+    tone: str  # 선택된 톤
 
 
 class RewriteResponse(BaseModel):
     original_text: str
     context: str
+    rewritten_text: str
+    explanation: str
+    tone_name: str
+    tone_icon: str

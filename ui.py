@@ -16,6 +16,36 @@ st.set_page_config(
     layout="wide"
 )
 
+# 사이드바 너비 조정을 위한 CSS
+st.markdown("""
+    <style>
+    /* 사이드바 너비 조정 */
+    .css-1d391kg {
+        width: 28rem;
+    }
+    .css-1544g2n {
+        width: 28rem;
+    }
+    section[data-testid="stSidebar"] {
+        width: 28rem !important;
+    }
+    section[data-testid="stSidebar"] > div {
+        width: 28rem !important;
+    }
+
+    /* 메인 컨텐츠 영역 조정 */
+    .main .block-container {
+        padding-left: 2rem;
+        max-width: none;
+    }
+
+    /* 마크다운 요소들 간격 조정 */
+    .stMarkdown h3 {
+        margin-bottom: 0.5rem !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 환경 변수 로드
 from dotenv import load_dotenv
 
@@ -55,6 +85,24 @@ with st.sidebar:
 
     context_value = context_options[selected_context]
 
+    # 선택된 상황에 따른 톤 옵션 표시
+    available_tones = st.session_state.rewrite_service.get_available_tones(context_value)
+
+    tone_options = {}
+    for tone_name, tone_info in available_tones.items():
+        tone_options[f"{tone_info['icon']} {tone_name}"] = tone_name
+
+    selected_tone_display = st.selectbox(
+        "톤을 선택하세요:",
+        options=list(tone_options.keys())
+    )
+
+    selected_tone = tone_options[selected_tone_display]
+
+    # 선택된 톤 설명 표시
+    if selected_tone in available_tones:
+        st.caption(f"💡 {available_tones[selected_tone]['description']}")
+
 # 메인 영역
 col1, col2 = st.columns([1, 1])
 
@@ -81,7 +129,8 @@ with col2:
                 # 비동기 함수 실행
                 request = RewriteRequest(
                     text=input_text.strip(),
-                    context=ContextType(context_value)
+                    context=ContextType(context_value),
+                    tone=selected_tone
                 )
 
                 # 비동기 함수를 동기적으로 실행
@@ -95,26 +144,34 @@ with col2:
                 # 결과 표시
                 st.success("리라이팅 완료!")
 
-                # 각 버전을 동적 탭으로 표시
-                if response.versions:
-                    tabs = st.tabs([f"{v.icon} {v.name}" for v in response.versions])
+                print(response, '응답')
 
-                    for i, (tab, version) in enumerate(zip(tabs, response.versions)):
-                        with tab:
-                            st.markdown(f"### {version.icon} {version.name}")
+                # 단일 결과 표시 (versions 대신 직접 접근)
+                st.markdown(f"### {response.tone_icon} {response.tone_name}")
 
-                            st.markdown(
-                                f"""
-                                <div style='white-space: pre-wrap; font-size: 1.06em; background: #f7f7fa; border-radius: 6px; padding: 8px 10px; margin-bottom: 5px; word-break: break-all;'>
-                                {version.text}
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.caption("텍스트를 드래그해 복사하세요.")
+                st.markdown(
+                    f"""
+                    <div style='white-space: pre-wrap; font-size: 1.06em; background: #f7f7fa; border-radius: 6px; padding: 4px 10px 8px 10px; margin-top: -20px; margin-bottom: 5px; word-break: break-all;'>
+                    {response.rewritten_text}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.caption("텍스트를 드래그해 복사하세요.")
 
-                            st.markdown(f"**💡 설명:** {version.explanation}")
-                            st.markdown("---")
+                # 설명에서 번호를 불릿 포인트로 변환
+                formatted_explanation = response.explanation
+
+                # 번호 패턴을 불릿 포인트로 변환
+                import re
+
+                # 1. 또는 1) 패턴을 * 로 변환
+                formatted_explanation = re.sub(r'^\s*\d+\.\s*', '* ', formatted_explanation, flags=re.MULTILINE)
+                formatted_explanation = re.sub(r'^\s*\d+\)\s*', '* ', formatted_explanation, flags=re.MULTILINE)
+
+                st.markdown(f"**💡 설명**")
+                st.markdown(f"{formatted_explanation}")
+                st.markdown("---")
 
             except Exception as e:
                 st.error(f"오류가 발생했습니다: {str(e)}")
